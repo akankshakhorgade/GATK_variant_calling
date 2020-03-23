@@ -119,7 +119,7 @@ heapdict==1.0.0
 html==1.16
 html5lib==0.999999999
 HTSeq==0.9.1
-httpie==0.9.9
+httpie==1.0.3
 httplib2==0.17.0
 idna==2.6
 imageio==2.2.0
