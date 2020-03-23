@@ -1,0 +1,17 @@
+{
+  "##_COMMENT_1##": "INPUTS",
+  "cores": 4,
+  "tasks": 1,
+  "tool": "/seq/plasmodium/tools/malaria_variant_calling/dev/v2",
+  "app": "/cil/shed/apps/external",
+  "gatk": "/humgen/gsa-hpprojects/GATK/bin/GenomeAnalysisTK-3.5-0-g36282e4/GenomeAnalysisTK.jar",
+  "run_dir": "/seq/plasmodium/test/test2",
+  "temp_dir": "/seq/plasmodium/test/test2/other_files",
+  "runid": "testrun1",
+  "ref_path": "/gsap/garage-protistvector/U19_Aim4/REF/PlasmoDB-28_Pfalciparum3D7_Genome.fasta",
+  "dict": "/gsap/garage-protistvector/U19_Aim4/REF/PlasmoDB-28_Pfalciparum3D7_Genome.dict",
+  "raw_fq": 1,
+  "trim": 0,
+  "hg19_ref": "/seq/plasmodium/data/refs/hg19_bt2Ind/hg19",
+  "metafile": "/seq/plasmodium/test/test2/bam_meta.tsv"
+}
