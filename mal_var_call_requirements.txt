@@ -3,7 +3,7 @@ anaconda-client==1.6.5
 anaconda-navigator==1.6.9
 anaconda-project==0.8.0
 anndata==0.6.5
-ansible==1.9.4
+ansible==2.6.18
 appdirs==1.4.3
 argcomplete==1.9.4
 asn1crypto==0.22.0
