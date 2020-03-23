@@ -68,7 +68,7 @@ decorator==4.1.2
 defusedxml==0.5.0
 DendroPy==4.4.0
 distributed==1.19.1
-Django==1.11.10
+Django==1.11.28
 docopt==0.6.2
 docutils==0.14
 drmaa==0.7.8
