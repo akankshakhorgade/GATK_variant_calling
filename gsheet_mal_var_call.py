@@ -25,12 +25,12 @@ def main():
 
 if __name__ == '__main__': 
    #googlesheet parameters
-    JSON_CRED_PATH='/seq/plasmodium/tools/malaria_variant_calling/malaria-variant-calling-904d2f9c9249.json'
+    JSON_CRED_PATH='path_to_.json'
 
     scope = ['https://spreadsheets.google.com/feeds',
     'https://www.googleapis.com/auth/drive']
 
-    gsheetId = '1yWtyLhrNoLnVDydQI86vk-r3vbcj2_62ZaTVf2VfsHU'
+    gsheetId = 'sheetId'
     gsheetname = 'malaria_variant_calling' #name of the speadsheet
     sheetName = 'master'   #name of the worksheet within the spreadsheet
 
