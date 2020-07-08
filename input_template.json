@@ -1,0 +1,21 @@
+{
+  "##_COMMENT_1##": "INPUTS",
+  "cores": 4,
+  "tasks": 1,
+  "tool": "",
+  "app": "",
+  "gatk": "",
+  "run_dir": "",
+  "temp_dir": "",
+  "runid": "",
+  "ref_path": "",
+  "dict": "",
+  "raw_fq": 1,
+  "trim": 0,
+  "hg19_ref": "",
+  "metafile": "",
+  "json_cred": "",
+  "gsheetId":"",
+  "gsheetname":"",
+  "sheetName":""
+}

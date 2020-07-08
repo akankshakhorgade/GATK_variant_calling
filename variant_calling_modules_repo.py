@@ -7,10 +7,11 @@ import argparse
 import numpy as np
 import pandas as pd
 #from google.cloud import storage
+callableLoci="/seq/plasmodium/data/bed/Miles_2016_Pf3D7_core_only.bed"
 
 def depthOfCoverage(path_to_gatk3, sampleid, ipath, refPath, output_dir):
     opath = output_dir + "/" + sampleid + "_depthofcoverage_summary"
-    cmd=" ".join(["java -jar",path_to_gatk3,"-T DepthOfCoverage", "--omitDepthOutputAtEachBase","--summaryCoverageThreshold 5","-I",ipath,"-o", opath, "-R", refPath])
+    cmd=" ".join(["java -jar",path_to_gatk3,"-L",callableLoci,"-T DepthOfCoverage","--omitDepthOutputAtEachBase","--summaryCoverageThreshold 5","-I",ipath,"-o",opath,"-R",refPath])
     print (cmd)
     err = os.system(cmd)
     if err:
@@ -48,9 +49,11 @@ def qcheck(bamfile, sampleid, tmp_dir, refPath, path_to_picard, path_to_gatk3, o
         if os.path.isfile(ins_met):
             ins_df = pd.read_csv(ins_met, sep = '\t', skiprows=6, nrows=1)
             qc2['mean_insert_size'] = ins_df['MEAN_INSERT_SIZE'][0]
+            qc2['median_insert_size'] = ins_df['MEDIAN_INSERT_SIZE'][0]
         else:
             warnings.warn('Path to InsertsizeMetrics File does not exist')
             qc2['mean_insert_size'] = "NA"
+            qc2['median_insert_size'] = "NA"
     else:
     	raise Exception('Input bamfile not found')
     mpath = tmp_dir + "/" + sampleid + "_multiple_metrics.alignment_summary_metrics"
@@ -75,7 +78,7 @@ def qcheck(bamfile, sampleid, tmp_dir, refPath, path_to_picard, path_to_gatk3, o
         qc2['read_pair_duplicates'] = "NA"
         qc2['pct_duplication'] = "NA"
         qc2['non_duplicate_reads'] = "NA"
-    qc_summary = qc_summary.append(qc2[['sampleid', 'maxCoverage_GC', 'mean_insert_size', 'total_reads', 'reads_aln', 'reads_aln_pct', 'read_pair_duplicates', 'pct_duplication', 'non_duplicate_reads','%_bases_above_5', 'mean_depth']])
+    qc_summary = qc_summary.append(qc2[['sampleid', 'maxCoverage_GC', 'mean_insert_size', 'median_insert_size','total_reads', 'reads_aln', 'reads_aln_pct', 'read_pair_duplicates', 'pct_duplication', 'non_duplicate_reads','%_bases_above_5', 'mean_depth']])
     qc_summary.to_csv(output, mode='a', sep='\t', header=False,index=False)
     return()
 

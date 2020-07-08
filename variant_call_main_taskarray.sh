@@ -3,33 +3,43 @@
 source /broad/software/scripts/useuse
 
 use BWA
+use Bowtie2
 use Java-1.8
 use Picard-Tools
 use Anaconda
 use Samtools
 use BEDTools
 
-#sampleid=$1
-#temp_dir=$2
-#hg19_ref=$3
-#ref_path=$4
-#runid=$5
-#gatk=$6
-#dict=$7
-#tool=$8
+# Utility for Parsing JSON File
+function json_extract() {
+  local key=$1
+  local json=$2
 
-cores=8
-tool="/seq/plasmodium/tools/malaria_variant_calling"
-app="/cil/shed/apps/external"
-gatk="/humgen/gsa-hpprojects/GATK/bin/GenomeAnalysisTK-3.5-0-g36282e4/GenomeAnalysisTK.jar"
-run_dir="/seq/plasmodium/test/test2"
-runid="testrun1"
-ref_path="/gsap/garage-protistvector/U19_Aim4/REF/PlasmoDB-28_Pfalciparum3D7_Genome.fasta"
-dict="/gsap/garage-protistvector/U19_Aim4/REF/PlasmoDB-28_Pfalciparum3D7_Genome.dict"
-temp_dir=${run_dir}/other_files
-raw_fq=1
-hg19_ref="/seq/plasmodium/data/refs/hg19_db/hg19_db"
-metafile=${run_dir}/bam_meta.tsv
+  local string_regex='"([^"\]|\\.)*"'
+  local number_regex='-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?'
+  local value_regex="${string_regex}|${number_regex}|true|false|null"
+  local pair_regex="\"${key}\"[[:space:]]*:[[:space:]]*(${value_regex})"
+
+  if [[ ${json} =~ ${pair_regex} ]]; then
+    echo $(sed 's/^"\|"$//g' <<< "${BASH_REMATCH[1]}")
+  else
+    return 1
+  fi
+    }
+
+# Extract Variables
+json=$1
+run_dir=$(json_extract run_dir "$(cat ${json})")
+metafile=$(json_extract metafile "$(cat ${json})")
+cores=$(json_extract cores "$(cat ${json})")
+hg19_ref=$(json_extract hg19_ref "$(cat ${json})")
+tool=$(json_extract tool "$(cat ${json})")
+runid=$(json_extract runid "$(cat ${json})")
+ref_path=$(json_extract ref_path "$(cat ${json})")
+dict=$(json_extract dict "$(cat ${json})")
+gatk=$(json_extract gatk "$(cat ${json})")
+temp_dir=$(json_extract temp_dir "$(cat ${json})")
+trim=$(json_extract trim "$(cat ${json})")
 
 # Parse metafile
 myline=$(sed -n "${SGE_TASK_ID}"p ${metafile})
@@ -39,31 +49,28 @@ sampleid=${INFO[1]} ## Check against metafile
 bampath=${INFO[0]} ## check against metafile
 
 ### hg19 alignment - host removal
-# map to BWA hg19 db index
-echo "Mapping of sample FASTQs to BWA hg19 db started"
-use BWA
-bwa mem -t ${cores} ${hg19_ref} ${temp_dir}/fastq/${sampleid}.1.fq ${temp_dir}/fastq/${sampleid}.2.fq | samtools view -bS -> ${temp_dir}/${sampleid}.mapAndUnmapped.hg19.bam
-echo "Mapping of sample FASTQs to hg19 db finished"
+# map to Bowtie2 hg19 db index
+if [ ${trim} -eq 1 ]; then
+  trim_1=${temp_dir}/fastq/${sampleid}.1_val_1.fq
+  trim_2=${temp_dir}/fastq/${sampleid}.2_val_2.fq
+else
+  trim_1=${temp_dir}/fastq/${sampleid}.1.fq
+  trim_2=${temp_dir}/fastq/${sampleid}.2.fq
+fi
+
+bowtie2 -x ${hg19_ref} -1 ${trim_1} -2 ${trim_2} | samtools view -bS -> ${temp_dir}/${sampleid}.mapAndUnmapped.hg19.bam
 # filter out reads unmapped to hg19
-echo "Filtering of unmapped reads started"
 samtools view -b -f 12 -F 256 ${temp_dir}/${sampleid}.mapAndUnmapped.hg19.bam > ${temp_dir}/${sampleid}.unmapped.bam
-echo "Filtering of unmapped reads finished"
 # sort BAM file by read name (-n) to have reads next to each other [required by bedtools]
-echo "Unmapped BAM sorting started"
 samtools sort -n ${temp_dir}/${sampleid}.unmapped.bam -o ${temp_dir}/${sampleid}.unmapped.sorted.bam
-echo "Unmapped BAM sorting finished"
 # BAM to FASTQ files
 use BEDTools
-echo "BAM to FASTQ started"
 bedtools bamtofastq -i ${temp_dir}/${sampleid}.unmapped.sorted.bam -fq ${temp_dir}/fastq/${sampleid}.hostRemoved.1.fq -fq2 ${temp_dir}/fastq/${sampleid}.hostRemoved.2.fq
-echo "BAM to FASTQ finished"
 
 ### PFal Alignment
-echo "PFal Alignment started"
 bwa mem -t ${cores} \
 -R "@RG\\tID:FLOWCELL_${sampleid}\\tSM:${sampleid}\\tPL:ILLUMINA\\tLB:LIB_${sampleid}" ${ref_path} \
 ${temp_dir}/fastq/${sampleid}.hostRemoved.1.fq ${temp_dir}/fastq/${sampleid}.hostRemoved.2.fq | samtools view -bS -> ${temp_dir}/${sampleid}.aligned.bam
-echo "PFal Alignment finished"
 
 ### Sort BAM
 java -Xmx8G -jar $PICARD SortSam I=${temp_dir}/${sampleid}.aligned.bam \
@@ -95,7 +102,7 @@ python ${tool}/QC_subProc.py --sample_path ${temp_dir}/${sampleid}.reordered.bam
 
 ### GATK Variant calling
 # GATK RealignerTargetCreator
-java -Xmx8G -jar ${gatk} -T RealignerTargetCreator -nct 1 -nt ${cores} \
+java -Xmx8G -jar ${gatk} -T RealignerTargetCreator -nct 1 -nt 24 \
 -R ${ref_path} -I ${temp_dir}/${sampleid}.reordered.bam \
 -o ${temp_dir}/${sampleid}.interval_list
 
@@ -126,9 +133,12 @@ java -Xmx8G -jar ${gatk} -T HaplotypeCaller -nt 1 \
 -R ${ref_path} --input_file ${temp_dir}/${sampleid}.bqsr.bam \
 -ERC GVCF -ploidy 2 --interval_padding 100 -o ${run_dir}/gvcf/${sampleid}.g.vcf \
 -variant_index_type LINEAR -variant_index_parameter 128000
+chmod 444 ${run_dir}/gvcf/${sampleid}.g.vcf
 
 
 ### Cleanup
+rm ${temp_dir}/${sampleid}.mapAndUnmapped.hg19.bam
+rm ${temp_dir}/${sampleid}.unmapped.bam
 rm ${temp_dir}/fastq/${sampleid}.1.fq
 rm ${temp_dir}/fastq/${sampleid}.2.fq
 rm ${temp_dir}/${sampleid}.aligned.bam
@@ -136,10 +146,13 @@ rm ${temp_dir}/${sampleid}.sorted.bam
 rm ${temp_dir}/${sampleid}.marked_duplicates.bam
 rm ${temp_dir}/${sampleid}.unmapped.bam
 rm ${temp_dir}/${sampleid}.marked_duplicates.metrics
-rm ${temp_dir}/${sampleid}.reordered.bam
+#rm ${temp_dir}/${sampleid}.reordered.bam
 rm ${temp_dir}/${sampleid}.reordered.bam.bai
 rm ${temp_dir}/${sampleid}.interval_list
 rm ${temp_dir}/${sampleid}.indels_realigned.bam
 rm ${temp_dir}/${sampleid}.indels_realigned.bam.bai
 rm ${temp_dir}/${sampleid}.indels_realigned.bai
 rm ${temp_dir}/${sampleid}_recal_report.grp
+#rm ${temp_dir}/${sampleid}.bqsr.bam
+rm ${temp_dir}/${sampleid}.bqsr.bam.bai
+rm ${temp_dir}/${sampleid}.bqsr.bai

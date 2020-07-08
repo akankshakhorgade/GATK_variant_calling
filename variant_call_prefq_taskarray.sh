@@ -6,13 +6,33 @@ use Java-1.8
 use Picard-Tools
 use Anaconda
 
-tool="/seq/plasmodium/tools/malaria_variant_calling"
-run_dir="/seq/plasmodium/test/test2"
-temp_dir=${run_dir}/other_files
-raw_fq=1
-metafile=${run_dir}/bam_meta.tsv
-app="/cil/shed/apps/external"
+# Utility for Parsing JSON File
+function json_extract() {
+  local key=$1
+  local json=$2
+
+  local string_regex='"([^"\]|\\.)*"'
+  local number_regex='-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?'
+  local value_regex="${string_regex}|${number_regex}|true|false|null"
+  local pair_regex="\"${key}\"[[:space:]]*:[[:space:]]*(${value_regex})"
+
+  if [[ ${json} =~ ${pair_regex} ]]; then
+    echo $(sed 's/^"\|"$//g' <<< "${BASH_REMATCH[1]}")
+  else
+    return 1
+  fi
+    }
+
+# Extract Variables
+json=$1
+run_dir=$(json_extract run_dir "$(cat ${json})")
+metafile=$(json_extract metafile "$(cat ${json})")
+raw_fq=$(json_extract raw_fq "$(cat ${json})")
+trim=$(json_extract trim "$(cat ${json})")
+temp_dir=$(json_extract temp_dir "$(cat ${json})")
+app=$(json_extract app "$(cat ${json})")
 fastqc="${app}/FastQC/fastqc"
+trim_galore="${app}/TrimGalore-0.4.5/trim_galore"
 
 
 # Parse metafile
@@ -35,4 +55,11 @@ if [ ${raw_fq} -eq 1 ]; then
 	${fastqc} ${path_to_fq}.*.fq
 else
 	echo "Skipping fastqc step as per User request"
+fi
+
+# Run Trimgalore
+if [ ${trim} -eq 1 ]; then
+	${trim_galore} --paired -o ${temp_dir}/fastq/ ${path_to_fq}.1.fq ${path_to_fq}.2.fq
+else
+	echo "skip trimming as per User request"
 fi

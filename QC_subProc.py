@@ -1,4 +1,8 @@
 #!/usr/bin/env python
+### Parses args that we provide to the shell - assigns a variable to the args provided
+### REQUIRED
+
+
 import argparse
 import os
 
